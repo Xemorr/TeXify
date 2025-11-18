@@ -1,0 +1,17 @@
+[workspace]
+members = [
+    "shared",
+    "toy",
+    "training",
+    "web",
+]
+
+resolver = "2"
+
+[workspace.dependencies]
+shared = { path = "shared"}
+
+[profile.dev]
+incremental = true
+opt-level = 0
+codegen-units = 256
