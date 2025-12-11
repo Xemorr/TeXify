@@ -1,4 +1,6 @@
 [package.metadata.leptos]
 output-name = "type-it-web"
 site-root = "../target/site"
+site-pkg-dir = "pkg"
+env = "PROD"
 side-addr = "0.0.0.0:10000"

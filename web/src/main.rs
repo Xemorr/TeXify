@@ -10,7 +10,18 @@ async fn main() {
 
     let conf = get_configuration(Some("./leptos_options.toml")).unwrap();
     // Render sets the PORT environment variable
-    let leptos_options = conf.leptos_options;
+    let mut leptos_options = conf.leptos_options;
+
+    // Override address to 0.0.0.0:10000 in release mode
+    #[cfg(not(debug_assertions))]
+    {
+        leptos_options.site_addr = "0.0.0.0:10000".parse().unwrap();
+    }
+
+    log!("Site Address Loaded: {:?}", leptos_options.site_addr);
+    log!("Site Root Loaded: {:?}", leptos_options.site_root);
+    log!("Output Name Loaded: {:?}", leptos_options.output_name);
+
     let addr = leptos_options.site_addr.clone();
 
     // Generate the list of routes in your Leptos App

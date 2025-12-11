@@ -124,6 +124,58 @@ pub fn Classifier() -> impl IntoView {
         }
     };
 
+    let perform_classification = Rc::new(move || {
+        if let Some(canvas) = canvas_ref.get() {
+            // Spawn async task to avoid blocking the canvas
+            let model_inner = Rc::clone(&model);
+            wasm_bindgen_futures::spawn_local(async move {
+                let canvas: HtmlCanvasElement = canvas.clone().into();
+                let ctx = canvas
+                    .get_context("2d")
+                    .unwrap()
+                    .unwrap()
+                    .dyn_into::<CanvasRenderingContext2d>()
+                    .unwrap();
+
+                // Get image data from canvas
+                let image_data_obj = ctx
+                    .get_image_data(0.0, 0.0, canvas.width() as f64, canvas.height() as f64)
+                    .unwrap();
+
+                let data = image_data_obj.data();
+                let canvas_width = canvas.width() as usize;
+                let canvas_height = canvas.height() as usize;
+
+                // Create a temporary ImageBuffer for resizing
+                let img_buffer = image::ImageBuffer::from_fn(canvas_width as u32, canvas_height as u32, |x, y| {
+                    let luma_idx = (y as usize * canvas_width + x as usize) * 4 + 3; // * 4 + 3 to get the luma component
+                    image::Luma([data.0[luma_idx]])
+                });
+
+                // Resize to 32x32
+                let resized = image::imageops::resize(&img_buffer, 32, 32, image::imageops::FilterType::Triangle);
+
+                // Convert to [[f32; 32]; 32] and normalize
+                let mut image_array = [[0.0f32; WIDTH]; HEIGHT];
+                for y in 0..HEIGHT {
+                    for x in 0..WIDTH {
+                        let pixel = resized.get_pixel(x as u32, y as u32);
+
+                        // Normalize to 0.0-1.0
+                        image_array[y][x] = (pixel[0] as f32) / 255.0;
+                    }
+                }
+
+                // Run inference
+                match model_inner.borrow_mut().inference(image_array).await {
+                    predictions => {
+                        set_predictions.set(Some(predictions));
+                    }
+                }
+            });
+        }
+    });
+
     let on_mouse_down = move |e: web_sys::MouseEvent| {
         set_drawing.set(true);
         if let Some(canvas) = canvas_ref.get() {
@@ -144,6 +196,7 @@ pub fn Classifier() -> impl IntoView {
         }
     };
 
+    let perform_classification_clone = Rc::clone(&perform_classification);
     let on_mouse_move = move |e: web_sys::MouseEvent| {
         if drawing.get() {
             if let Some(canvas) = canvas_ref.get() {
@@ -161,6 +214,9 @@ pub fn Classifier() -> impl IntoView {
                 ctx.set_line_width(1.5);
                 ctx.line_to(x, y);
                 ctx.stroke();
+
+                // Perform classification after drawing
+                // perform_classification_clone();
             }
         }
     };
@@ -184,64 +240,8 @@ pub fn Classifier() -> impl IntoView {
         set_predictions.set(None);
     };
 
-    let model_clone = Rc::clone(&model);
     let classify = move |_| {
-        if let Some(canvas) = canvas_ref.get() {
-            let canvas: HtmlCanvasElement = canvas.clone().into();
-            let ctx = canvas
-                .get_context("2d")
-                .unwrap()
-                .unwrap()
-                .dyn_into::<CanvasRenderingContext2d>()
-                .unwrap();
-
-            // Get image data from canvas
-            let image_data_obj = ctx
-                .get_image_data(0.0, 0.0, canvas.width() as f64, canvas.height() as f64)
-                .unwrap();
-
-            let data = image_data_obj.data();
-
-
-            // Preprocess: resize to 32x32 and convert to grayscale
-            let canvas_width = canvas.width() as usize;
-            let canvas_height = canvas.height() as usize;
-
-            // Create a temporary ImageBuffer for resizing
-            let img_buffer = image::ImageBuffer::from_fn(canvas_width as u32, canvas_height as u32, |x, y| {
-                let luma_idx = (y as usize * canvas_width + x as usize) * 4 + 3; // * 4 + 3 to get the luma component
-                image::Luma([data.0[luma_idx]])
-            });
-            leptos::logging::log!("Img Buffer {:?}", img_buffer);
-
-
-            // Resize to 32x32
-            let resized = image::imageops::resize(&img_buffer, 32, 32, image::imageops::FilterType::Triangle);
-
-            // Convert to [[f32; 32]; 32] and normalize
-            let mut image_array = [[0.0f32; WIDTH]; HEIGHT];
-            for y in 0..HEIGHT {
-                for x in 0..WIDTH {
-                    let pixel = resized.get_pixel(x as u32, y as u32);
-
-                    // Normalize to 0.0-1.0
-                    image_array[y][x] = (pixel[0] as f32) / 255.0;
-                }
-            }
-
-            leptos::logging::log!("Image preprocessed to 32x32");
-            leptos::logging::log!("{:?}", image_array);
-
-            // Run inference
-            let model_inner = Rc::clone(&model_clone);
-            wasm_bindgen_futures::spawn_local(async move {
-                match model_inner.borrow_mut().inference(image_array).await {
-                    predictions => {
-                        set_predictions.set(Some(predictions));
-                    }
-                }
-            });
-        }
+        perform_classification();
     };
 
     Effect::new(move |_| {
