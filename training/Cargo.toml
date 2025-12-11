@@ -1,0 +1,16 @@
+[package]
+name = "training"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+burn = { version = "0.19.1", features = ["vulkan", "std", "tui", "train", "vision", "fusion"], default-features = false }
+serde = { version = "1.0", features = ["derive"] }
+tokio = { version = "1", features = ["full"] }
+sqlx = { version = "0.8.6", features = ["runtime-tokio", "postgres"] }
+dotenvy = "0.15.7"
+shared = { workspace = true }
+
+[build]
+rustc-wrapper = "sccache"
+jobs = 24

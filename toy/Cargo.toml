@@ -1,0 +1,8 @@
+[package]
+name = "toy"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+burn = { version = "0.19.1", features = ["wgpu", "std", "tui", "train", "vision", "fusion"], default-features = false }
+shared = { workspace = true}
