@@ -4,9 +4,9 @@ use burn::config::Config;
 use burn::data::dataloader::DataLoaderBuilder;
 use burn::module::Module;
 use burn::nn::loss::CrossEntropyLossConfig;
-use burn::optim::{AdamConfig, AdamWConfig};
+use burn::optim::AdamWConfig;
 use burn::prelude::Backend;
-use burn::record::CompactRecorder;
+use burn::record::{BinFileRecorder, FullPrecisionSettings};
 use burn::tensor::backend::AutodiffBackend;
 use burn::tensor::Int;
 use burn::train::metric::{AccuracyMetric, LossMetric, TopKAccuracyMetric};
@@ -64,12 +64,12 @@ pub struct TrainingConfig {
     pub num_workers: usize,
     #[config(default = 42)]
     pub seed: u64,
-    #[config(default = 1.0e-4)]
+    #[config(default = 1.0e-3)]
     pub learning_rate: f64
 }
 
 fn create_artifact_dir(artifact_dir: &str) {
-    std::fs::remove_dir_all(artifact_dir).unwrap();
+    std::fs::remove_dir_all(artifact_dir).ok();
     std::fs::create_dir_all(artifact_dir).unwrap();
 }
 
@@ -101,9 +101,11 @@ pub fn train<Backend: AutodiffBackend>(artifact_dir: &str, config: TrainingConfi
         .metric_valid_numeric(AccuracyMetric::new())
         .metric_train_numeric(TopKAccuracyMetric::new(5))
         .metric_valid_numeric(TopKAccuracyMetric::new(5))
+        .metric_train_numeric(TopKAccuracyMetric::new(10))
+        .metric_valid_numeric(TopKAccuracyMetric::new(10))
         .metric_train_numeric(LossMetric::new())
         .metric_valid_numeric(LossMetric::new())
-        .with_file_checkpointer(CompactRecorder::new())
+        .with_file_checkpointer(BinFileRecorder::<FullPrecisionSettings>::default())
         .learning_strategy(LearningStrategy::SingleDevice(device.clone()))
         .num_epochs(config.num_epochs)
         .build(
@@ -114,6 +116,6 @@ pub fn train<Backend: AutodiffBackend>(artifact_dir: &str, config: TrainingConfi
 
     let result = learner.fit(dataloader_train, dataloader_test);
 
-    result.model.save_file(format!("{artifact_dir}/model"), &CompactRecorder::new())
+    result.model.save_file(format!("{artifact_dir}/model"), &BinFileRecorder::<FullPrecisionSettings>::default())
         .expect("Trained model should be saved successfully!");
 }

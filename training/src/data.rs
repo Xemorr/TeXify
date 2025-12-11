@@ -2,7 +2,7 @@ use burn::data::dataloader::batcher::Batcher;
 use burn::prelude::{Backend, ElementConversion, TensorData};
 use burn::tensor::Int;
 use burn::Tensor;
-use shared::item::DetexifyItem;
+use shared::item::{DetexifyItem, HEIGHT, WIDTH};
 
 #[derive(Clone, Default)]
 pub struct DetexifyBatcher {}
@@ -19,8 +19,7 @@ impl<B: Backend> Batcher<B, DetexifyItem, DetexifyBatch<B>> for DetexifyBatcher 
             .iter()
             .map(|item| TensorData::from(item.image).convert::<B::FloatElem>())
             .map(|data| Tensor::<B, 2>::from_data(data, device))
-            .map(|tensor| tensor.reshape([1, 28, 28]))
-            .map(|tensor| ((tensor / 255) - 0.1307) / 0.3081)
+            .map(|tensor| tensor.reshape([1, HEIGHT, WIDTH]))
             .collect();
 
         let targets = items

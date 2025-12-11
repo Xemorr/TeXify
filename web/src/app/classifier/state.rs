@@ -12,7 +12,7 @@ pub type MyB = NdArray<f32, i32>;
 
 /// Builds and loads trained parameters into the model.
 pub async fn build_and_load_model() -> Model<MyB> {
-    let model: Model<MyB> = ModelConfig::new(1098, 512)
+    let model: Model<MyB> = ModelConfig::new(1098, 256)
         .init(&Default::default());
     let record = BinBytesRecorder::<FullPrecisionSettings, &'static [u8]>::default()
         .load(STATE_ENCODED, &Default::default())
