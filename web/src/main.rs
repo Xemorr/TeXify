@@ -9,7 +9,12 @@ async fn main() {
     use leptos_axum::{generate_route_list, LeptosRoutes};
 
     let conf = get_configuration(None).unwrap();
-    let addr = conf.leptos_options.site_addr;
+    // Render sets the PORT environment variable
+    let addr = if let Ok(port) = std::env::var("PORT") {
+        format!("0.0.0.0:{port}")
+    } else {
+        conf.leptos_options.site_addr.to_string()
+    };
     let leptos_options = conf.leptos_options;
     // Generate the list of routes in your Leptos App
     let routes = generate_route_list(App);
