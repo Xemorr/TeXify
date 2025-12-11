@@ -1,0 +1,4 @@
+[package.metadata.leptos]
+output-name = "type-it-web"
+site-root = "../target/site"
+side-addr = "0.0.0.0:10000"

@@ -22,8 +22,6 @@ shared = { workspace = true }
 image = "0.25.8"
 getrandom = { version = "0.3", features = ["wasm_js"] }
 burn-wgpu = "0.19.1"
-base64 = "0.22"
-mathquill-leptos = "0.2.0"
 
 [features]
 hydrate = [
