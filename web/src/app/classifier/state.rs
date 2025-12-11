@@ -5,7 +5,7 @@ use burn::{
 };
 use shared::model::{Model, ModelConfig};
 
-static STATE_ENCODED: &[u8] = include_bytes!("../../../../over90top5/model.bin");
+static STATE_ENCODED: &[u8] = include_bytes!("../../../../model.bin");
 
 pub type MyB = NdArray<f32, i32>;
 
