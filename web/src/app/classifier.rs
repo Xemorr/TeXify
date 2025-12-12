@@ -282,14 +282,8 @@ pub fn Classifier() -> impl IntoView {
                                 each=move || predicted.clone()
                                 key=|state| state.clone()
                                 children=move |child| {
-                                    let url = format!("/symbols/{}.png", child.symbol);
-                                    let symbol = child.symbol;
                                     view! {
-                                        <div class="prediction-item">
-                                            <p><strong>{symbol}</strong></p>
-                                            <p>{format!("{:.2}%", child.probability)}</p>
-                                            <img src={url} />
-                                        </div>
+                                        <PredictionItem prediction=child/>
                                     }
                                 }
                             />
@@ -297,6 +291,24 @@ pub fn Classifier() -> impl IntoView {
                     }}
                 </Show>
             </div>
+        </div>
+    }
+}
+
+#[component]
+fn PredictionItem(prediction: Prediction) -> impl IntoView {
+    let url = format!("/symbols/{}.png", prediction.symbol);
+    let split = prediction.symbol.clone().split("_").map(|it| it.to_string()).collect::<Vec<String>>();
+    let symbol = split[1].clone();
+    let package = split[0].clone().split("-").map(|it| it.to_string()).nth(0).unwrap();
+    view! {
+        <div class="prediction-item">
+            <div style="display: flex; align-items: center; flex-direction: column;">
+                <p><strong>"\\usepackage{"{package}"}"</strong></p>
+                <p><strong>"\\"{symbol}</strong></p>
+                <p>{format!("{:.2}%", prediction.probability)}</p>
+            </div>
+            <img src={url} />
         </div>
     }
 }
