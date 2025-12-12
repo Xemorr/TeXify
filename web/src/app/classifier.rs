@@ -2,13 +2,14 @@ use crate::app::classifier::state::{build_and_load_model, MyB};
 use burn::backend::ndarray::NdArrayDevice;
 use leptos::prelude::{ClassAttribute, ElementChild};
 use leptos::prelude::{signal, Effect, Get, NodeRef, NodeRefAttribute, OnAttribute, Set, Show, StyleAttribute};
-use leptos::{component, view, IntoView};
+use leptos::{component, server, view, IntoView};
 use shared::item::{HEIGHT, WIDTH};
 use shared::model::Model;
 use std::cell::RefCell;
 use std::hash::{Hash, Hasher};
 use std::iter::zip;
 use std::rc::Rc;
+use burn::tensor::activation::{log_softmax, softmax};
 use leptos::control_flow::For;
 
 mod keys;
@@ -62,17 +63,18 @@ impl SharedModel {
             .unsqueeze();
 
         // Run forward pass
-        let output: Tensor<MyB, 2> = model.forward(tensor);
+        let output: Tensor<MyB, 1> = model.forward(tensor).squeeze();
+        let probabilities = softmax(output.clone(), 0);
 
-        // Get argmax asynchronously (the predicted class index)
-        let topk = output
-            .topk_with_indices(5, 1);
+        let topk = probabilities
+            .topk_with_indices(5, 0);
+
         let predicted_idx = topk.1
             .to_data_async()
             .await
             .to_vec::<i32>()
             .unwrap();
-        let predicted_values = topk.0
+        let predicted_values = (topk.0 * 100)
             .to_data_async()
             .await
             .to_vec::<f32>().unwrap();
@@ -285,7 +287,7 @@ pub fn Classifier() -> impl IntoView {
                                     view! {
                                         <div class="prediction-item">
                                             <p><strong>{symbol}</strong></p>
-                                            <p>{format!("{:.2}%", child.probability * 100.0)}</p>
+                                            <p>{format!("{:.2}%", child.probability)}</p>
                                             <img src={url} />
                                         </div>
                                     }
