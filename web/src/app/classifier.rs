@@ -192,7 +192,6 @@ pub fn Classifier() -> impl IntoView {
         }
     };
 
-    let perform_classification_clone3 = Rc::clone(&perform_classification);
     let on_touch_move = move |e: web_sys::TouchEvent| {
         e.prevent_default();
         if drawing.get() {
@@ -208,20 +207,17 @@ pub fn Classifier() -> impl IntoView {
                 if let Some((x, y)) = get_touch_coords(&e, &canvas) {
                     ctx.line_to(x, y);
                     ctx.stroke();
-
-                    // Perform classification after drawing
-                    perform_classification_clone3();
                 }
             }
         }
     };
 
-    let perform_classification_clone4 = Rc::clone(&perform_classification);
+    let perform_classification_clone3 = Rc::clone(&perform_classification);
     let on_touch_end = move |e: web_sys::TouchEvent| {
         e.prevent_default();
         set_drawing.set(false);
         // Final classification when done drawing
-        perform_classification_clone4();
+        perform_classification_clone3();
     };
 
     let clear_canvas = move |_| {
