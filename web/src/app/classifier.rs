@@ -1,113 +1,55 @@
 use crate::app::classifier::state::{build_and_load_model, MyB};
 use burn::backend::ndarray::NdArrayDevice;
-use leptos::prelude::{ClassAttribute, ElementChild};
+use burn::tensor::activation::softmax;
+use leptos::control_flow::For;
 use leptos::prelude::{signal, Effect, Get, NodeRef, NodeRefAttribute, OnAttribute, Set, Show, StyleAttribute};
-use leptos::{component, server, view, IntoView};
+use leptos::prelude::{ClassAttribute, ElementChild};
+use leptos::wasm_bindgen::JsCast;
+use leptos::{component, view, IntoView};
 use shared::item::{HEIGHT, WIDTH};
 use shared::model::Model;
 use std::cell::RefCell;
 use std::hash::{Hash, Hasher};
 use std::iter::zip;
 use std::rc::Rc;
-use burn::tensor::activation::{log_softmax, softmax};
-use leptos::control_flow::For;
+use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
+use crate::app::classifier::model::{Prediction, SharedModel};
 
 mod keys;
 mod state;
-pub struct SharedModel {
-    model: Option<Model<MyB>>,
-    device: NdArrayDevice,
+mod model;
+
+fn get_logical_coords(e: &web_sys::MouseEvent, canvas: &HtmlCanvasElement) -> (f64, f64) {
+    let rect = canvas.get_bounding_client_rect();
+    let scale_x = canvas.width() as f64 / rect.width();
+    let scale_y = canvas.height() as f64 / rect.height();
+
+    let x = (e.client_x() as f64 - rect.left()) * scale_x;
+    let y = (e.client_y() as f64 - rect.top()) * scale_y;
+
+    (x, y)
 }
 
-#[derive(Clone)]
-pub struct Prediction {
-    pub symbol: String,
-    pub probability: f32
-}
+fn get_touch_coords(e: &web_sys::TouchEvent, canvas: &HtmlCanvasElement) -> Option<(f64, f64)> {
+    let touch = e.touches().get(0)?;
+    let rect = canvas.get_bounding_client_rect();
+    let scale_x = canvas.width() as f64 / rect.width();
+    let scale_y = canvas.height() as f64 / rect.height();
 
-impl PartialEq for Prediction {
-    fn eq(&self, other: &Self) -> bool {
-        self.symbol == other.symbol
-    }
-}
+    let x = (touch.client_x() as f64 - rect.left()) * scale_x;
+    let y = (touch.client_y() as f64 - rect.top()) * scale_y;
 
-impl Eq for Prediction {}
-
-impl Hash for Prediction {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.symbol.hash(state);
-    }
-}
-
-impl SharedModel {
-    pub fn new() -> Self {
-        Self {
-            model: None,
-            device: NdArrayDevice::default(),
-        }
-    }
-
-    pub async fn inference(&mut self, image: [[f32; WIDTH]; HEIGHT]) -> Vec<Prediction> {
-        use burn::prelude::*;
-        use burn::record::Recorder;
-
-        // Lazy-load the model
-        if self.model.is_none() {
-            self.model = Some(build_and_load_model().await);
-        }
-
-        let model = self.model.as_ref().unwrap();
-
-        // Create tensor and reshape to [batch, height, width]
-        let tensor = Tensor::<MyB, 2>::from_floats(image, &self.device)
-            .unsqueeze();
-
-        // Run forward pass
-        let output: Tensor<MyB, 1> = model.forward(tensor).squeeze();
-        let probabilities = softmax(output.clone(), 0);
-
-        let topk = probabilities
-            .topk_with_indices(5, 0);
-
-        let predicted_idx = topk.1
-            .to_data_async()
-            .await
-            .to_vec::<i32>()
-            .unwrap();
-        let predicted_values = (topk.0 * 100)
-            .to_data_async()
-            .await
-            .to_vec::<f32>().unwrap();
-
-        let predictions: Vec<Prediction> = zip(predicted_idx, predicted_values)
-            .map(|(idx, value)| Prediction { symbol: keys::KEYS[idx as usize].to_string(), probability: value })
-            .collect::<Vec<_>>();
-
-        predictions
-    }
+    Some((x, y))
 }
 
 #[component]
 pub fn Classifier() -> impl IntoView {
-    use leptos::wasm_bindgen::JsCast;
-    use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
-
     let model = Rc::new(RefCell::new(SharedModel::new()));
     let canvas_ref = NodeRef::<leptos::html::Canvas>::new();
     let processed_canvas_ref = NodeRef::<leptos::html::Canvas>::new();
     let (drawing, set_drawing) = signal(false);
     let (prediction, set_predictions) = signal(None::<Vec<Prediction>>);
-
-    fn get_logical_coords(e: &web_sys::MouseEvent, canvas: &HtmlCanvasElement) -> (f64, f64) {
-        let rect = canvas.get_bounding_client_rect();
-        let scale_x = canvas.width() as f64 / rect.width();
-        let scale_y = canvas.height() as f64 / rect.height();
-
-        let x = (e.client_x() as f64 - rect.left()) * scale_x;
-        let y = (e.client_y() as f64 - rect.top()) * scale_y;
-
-        (x, y)
-    }
+    let (classifying, set_classifying) = signal(false);
 
     // Initialize canvas drawing on mount
     let setup_canvas = move || {
@@ -120,13 +62,17 @@ pub fn Classifier() -> impl IntoView {
                 .dyn_into::<CanvasRenderingContext2d>()
                 .unwrap();
 
-            ctx.set_line_width(3.0);
+            ctx.set_line_width(1.5);
             ctx.set_line_cap("round");
             ctx.set_stroke_style_str("black");
         }
     };
 
     let perform_classification = Rc::new(move || {
+        if classifying.get() {
+            return; // Skip if already classifying
+        }
+        set_classifying.set(true);
         if let Some(canvas) = canvas_ref.get() {
             // Spawn async task to avoid blocking the canvas
             let model_inner = Rc::clone(&model);
@@ -174,6 +120,7 @@ pub fn Classifier() -> impl IntoView {
                         set_predictions.set(Some(predictions));
                     }
                 }
+                set_classifying.set(false);
             });
         }
     });
@@ -192,7 +139,6 @@ pub fn Classifier() -> impl IntoView {
             let rect = canvas.get_bounding_client_rect();
             let (x, y) = get_logical_coords(&e, &canvas);
 
-            ctx.set_line_width(1.5);
             ctx.begin_path();
             ctx.move_to(x, y);
         }
@@ -213,18 +159,69 @@ pub fn Classifier() -> impl IntoView {
                 let rect = canvas.get_bounding_client_rect();
                 let (x, y) = get_logical_coords(&e, &canvas);
 
-                ctx.set_line_width(1.5);
                 ctx.line_to(x, y);
                 ctx.stroke();
-
-                // Perform classification after drawing
-                // perform_classification_clone();
             }
         }
     };
 
-    let on_mouse_up = move |_: web_sys::MouseEvent| {
+    let perform_classification_clone2 = Rc::clone(&perform_classification);
+    let on_mouse_up = move |_| {
         set_drawing.set(false);
+        // Final classification when done drawing
+        perform_classification_clone2();
+    };
+
+    // Touch event handlers
+    let on_touch_start = move |e: web_sys::TouchEvent| {
+        e.prevent_default();
+        set_drawing.set(true);
+        if let Some(canvas) = canvas_ref.get() {
+            let canvas: HtmlCanvasElement = canvas.clone().into();
+            let ctx = canvas
+                .get_context("2d")
+                .unwrap()
+                .unwrap()
+                .dyn_into::<CanvasRenderingContext2d>()
+                .unwrap();
+
+            if let Some((x, y)) = get_touch_coords(&e, &canvas) {
+                ctx.begin_path();
+                ctx.move_to(x, y);
+            }
+        }
+    };
+
+    let perform_classification_clone3 = Rc::clone(&perform_classification);
+    let on_touch_move = move |e: web_sys::TouchEvent| {
+        e.prevent_default();
+        if drawing.get() {
+            if let Some(canvas) = canvas_ref.get() {
+                let canvas: HtmlCanvasElement = canvas.clone().into();
+                let ctx = canvas
+                    .get_context("2d")
+                    .unwrap()
+                    .unwrap()
+                    .dyn_into::<CanvasRenderingContext2d>()
+                    .unwrap();
+
+                if let Some((x, y)) = get_touch_coords(&e, &canvas) {
+                    ctx.line_to(x, y);
+                    ctx.stroke();
+
+                    // Perform classification after drawing
+                    perform_classification_clone3();
+                }
+            }
+        }
+    };
+
+    let perform_classification_clone4 = Rc::clone(&perform_classification);
+    let on_touch_end = move |e: web_sys::TouchEvent| {
+        e.prevent_default();
+        set_drawing.set(false);
+        // Final classification when done drawing
+        perform_classification_clone4();
     };
 
     let clear_canvas = move |_| {
@@ -242,10 +239,6 @@ pub fn Classifier() -> impl IntoView {
         set_predictions.set(None);
     };
 
-    let classify = move |_| {
-        perform_classification();
-    };
-
     Effect::new(move |_| {
         setup_canvas();
     });
@@ -260,14 +253,16 @@ pub fn Classifier() -> impl IntoView {
                     height="32"
                     on:mousedown=on_mouse_down
                     on:mousemove=on_mouse_move
-                    on:mouseup=on_mouse_up
+                    on:mouseup=on_mouse_up.clone()
                     on:mouseleave=on_mouse_up
+                    on:touchstart=on_touch_start
+                    on:touchmove=on_touch_move
+                    on:touchend=on_touch_end.clone()
+                    on:touchcancel=on_touch_end
                 ></canvas>
                 <div class="button-row">
                     <button on:click=clear_canvas>Clear</button>
-                    <button on:click=classify>Classify</button>
                 </div>
-                <p>Draw a LaTeX symbol and click Classify</p>
             </div>
                 
             <div class="predictions">
@@ -299,8 +294,8 @@ pub fn Classifier() -> impl IntoView {
 fn PredictionItem(prediction: Prediction) -> impl IntoView {
     let url = format!("/symbols/{}.png", prediction.symbol);
     let split = prediction.symbol.clone().split("_").map(|it| it.to_string()).collect::<Vec<String>>();
-    let symbol = split[1].clone();
-    let package = split[0].clone().split("-").map(|it| it.to_string()).nth(0).unwrap();
+    let symbol = split.get(1).unwrap_or(&split[0]).clone();
+    let package = split.get(0).map(|s| s.split("-").next().unwrap_or("").to_string()).unwrap_or_default();
     view! {
         <div class="prediction-item">
             <div style="display: flex; align-items: center; flex-direction: column;">
