@@ -240,7 +240,7 @@ pub fn Classifier() -> impl IntoView {
     });
 
     view! {
-        <div class="classifier-container">
+        <div class="container">
             <div class="canvas-section">
                 <h3>Draw Here</h3>
                 <canvas

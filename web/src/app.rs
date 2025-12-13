@@ -5,8 +5,10 @@ use leptos_router::{
     StaticSegment,
 };
 use crate::app::classifier::Classifier;
+use crate::app::footer::Footer;
 
 mod classifier;
+mod footer;
 
 pub fn shell(options: LeptosOptions) -> impl IntoView {
     view! {
@@ -55,8 +57,12 @@ pub fn App() -> impl IntoView {
 #[component]
 fn HomePage() -> impl IntoView {
     view! {
-        <h1>"LaTeX Symbol Classifier"</h1>
+        <h1 style="display: flex; align-items: center; gap: 10px;">
+            <img src="latex-logo-trimmed.webp" style="height: 1em;"></img>
+            "Symbol Classifier"
+        </h1>
         <Classifier />
+        <Footer />
     }
 }
 
