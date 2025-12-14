@@ -18,12 +18,19 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
                 <script src="https://cdn.jsdelivr.net/npm/@membrane/wasm-stack-trace@0.1.1/dist/index.js" integrity="sha256-4ven6yDmBLbFNTJ3e+BT6LHZgVL9XbXNKYDUhAa/S0Y=" crossorigin="anonymous"></script>
                 <meta charset="utf-8"/>
                 <meta name="viewport" content="width=device-width, initial-scale=1"/>
+                <link rel="manifest" href="/manifest.json"/>
+                <meta name="theme-color" content="#000000"/>
                 <AutoReload options=options.clone() />
                 <HydrationScripts options/>
                 <MetaTags/>
             </head>
             <body>
                 <App/>
+                <script>
+                    if ('serviceWorker' in navigator) {
+                        navigator.serviceWorker.register('/sw.js');
+                    }
+                </script>
             </body>
         </html>
     }
