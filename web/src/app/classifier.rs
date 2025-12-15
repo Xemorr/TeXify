@@ -6,6 +6,7 @@ use leptos::prelude::{signal, Effect, Get, NodeRef, NodeRefAttribute, OnAttribut
 use leptos::prelude::{ClassAttribute, ElementChild};
 use leptos::wasm_bindgen::JsCast;
 use leptos::{component, view, IntoView};
+use leptos::html::{Custom, InnerHtmlAttribute};
 use shared::item::{HEIGHT, WIDTH};
 use shared::model::Model;
 use std::cell::RefCell;
@@ -295,11 +296,22 @@ fn PredictionItem(prediction: Prediction) -> impl IntoView {
     view! {
         <div class="prediction-item">
             <div style="display: flex; align-items: center; flex-direction: column;">
-                <p><strong>"\\usepackage{"{package}"}"</strong></p>
-                <p><strong>"\\"{symbol}</strong></p>
+                <p><strong>"\\usepackage{"{package.clone()}"}"</strong></p>
+                <p><strong>"\\"{symbol.clone()}</strong></p>
                 <p>{format!("{:.2}%", prediction.probability)}</p>
             </div>
-            <img src={url} />
+            {
+                let latex_content = format!(r#"\documentclass{{article}}
+                                                    \usepackage{{{package}}}
+                                                    \begin{{document}}
+                                                    $\{symbol}$
+                                                    \end{{document}}"#,
+                   package=package,
+                   symbol=symbol);
+                view! {
+                    <div inner_html={format!(r#"<latex-js style="display: inline-block;">{}</latex-js>"#, latex_content)}></div>
+                }
+            }
         </div>
     }
 }
