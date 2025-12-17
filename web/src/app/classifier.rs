@@ -2,7 +2,7 @@ use crate::app::classifier::state::{build_and_load_model, MyB};
 use burn::backend::ndarray::NdArrayDevice;
 use burn::tensor::activation::softmax;
 use leptos::control_flow::For;
-use leptos::prelude::{signal, Effect, Get, NodeRef, NodeRefAttribute, OnAttribute, Set, Show, StyleAttribute};
+use leptos::prelude::{signal, Effect, Get, NodeRef, NodeRefAttribute, OnAttribute, Set, Show, StyleAttribute, IntoAny};
 use leptos::prelude::{ClassAttribute, ElementChild};
 use leptos::wasm_bindgen::JsCast;
 use leptos::{component, view, IntoView};
@@ -301,15 +301,25 @@ fn PredictionItem(prediction: Prediction) -> impl IntoView {
                 <p>{format!("{:.2}%", prediction.probability)}</p>
             </div>
             {
-                let latex_content = format!(r#"\documentclass{{article}}
-                                                    \usepackage{{{package}}}
-                                                    \begin{{document}}
-                                                    $\{symbol}$
-                                                    \end{{document}}"#,
-                   package=package,
-                   symbol=symbol);
-                view! {
-                    <div inner_html={format!(r#"<latex-js style="display: inline-block;">{}</latex-js>"#, latex_content)}></div>
+                // Packages that should fallback to PNG
+                let png_fallback_packages = ["stmaryrd", "dsfont", "textcomp", "mathdots", "wasysym", "marvosym", "gensymb", "tipa"];
+                // Specific symbols that should fallback to PNG
+                let png_fallback_symbols = ["textquestiondown", "textordfeminine", "dj", "copyright", "textbackslash"];
+
+                let use_png = png_fallback_packages.contains(&package.as_str())
+                    || png_fallback_symbols.contains(&symbol.as_str());
+
+                if use_png {
+                    view! {
+                        <div>
+                            <img src={url.clone()} style="width: 35px; height: 35px;" />
+                        </div>
+                    }.into_any()
+                } else {
+                    let latex_content = format!(r#"$\{symbol}$"#, symbol=symbol);
+                    view! {
+                        <div inner_html={format!(r#"<math-jax style="font-size: 35px;">{}</math-jax>"#, latex_content)}></div>
+                    }.into_any()
                 }
             }
         </div>

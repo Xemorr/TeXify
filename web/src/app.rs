@@ -16,7 +16,7 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
         <html lang="en">
             <head>
                 <script src="https://cdn.jsdelivr.net/npm/@membrane/wasm-stack-trace@0.1.1/dist/index.js" integrity="sha256-4ven6yDmBLbFNTJ3e+BT6LHZgVL9XbXNKYDUhAa/S0Y=" crossorigin="anonymous"></script>
-                <script type="module" src="include-latexjs.js"></script>
+                <script type="module" src="include-mathjax-component.js"></script>
                 <meta charset="utf-8"/>
                 <meta name="viewport" content="width=device-width, initial-scale=1"/>
                 <link rel="manifest" href="/manifest.json"/>
