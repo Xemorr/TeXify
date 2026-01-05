@@ -304,7 +304,7 @@ fn PredictionItem(prediction: Prediction) -> impl IntoView {
                 // Packages that should fallback to PNG
                 let png_fallback_packages = ["stmaryrd", "dsfont", "textcomp", "mathdots", "wasysym", "marvosym", "gensymb", "tipa"];
                 // Specific symbols that should fallback to PNG
-                let png_fallback_symbols = ["textquestiondown", "textordfeminine", "dj", "copyright", "textbackslash"];
+                let png_fallback_symbols = ["textquestiondown", "textordfeminine", "dj", "copyright", "textbackslash", "textgreater", "guilsinglright", "textasciicircum"];
 
                 let use_png = png_fallback_packages.contains(&package.as_str())
                     || png_fallback_symbols.contains(&symbol.as_str());
