@@ -6,9 +6,11 @@ use leptos_router::{
 };
 use crate::app::classifier::Classifier;
 use crate::app::footer::Footer;
+use crate::app::install_button::InstallButton;
 
 mod classifier;
 mod footer;
+mod install_button;
 
 pub fn shell(options: LeptosOptions) -> impl IntoView {
     view! {
@@ -19,8 +21,14 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
                 <script type="module" src="include-mathjax-component.js"></script>
                 <meta charset="utf-8"/>
                 <meta name="viewport" content="width=device-width, initial-scale=1"/>
+                <meta name="description" content="Draw LaTeX symbols and get instant recognition with our machine learning classifier. Works offline!"/>
                 <link rel="manifest" href="/manifest.json"/>
+                <link rel="icon" href="/latex-logo-trimmed.webp"/>
+                <link rel="apple-touch-icon" href="/latex-logo-trimmed.webp"/>
                 <meta name="theme-color" content="#000000"/>
+                <meta name="apple-mobile-web-app-capable" content="yes"/>
+                <meta name="apple-mobile-web-app-status-bar-style" content="black"/>
+                <meta name="apple-mobile-web-app-title" content="TypeIt"/>
                 <AutoReload options=options.clone() />
                 <HydrationScripts options/>
                 <MetaTags/>
@@ -65,6 +73,7 @@ fn HomePage() -> impl IntoView {
             <img src="latex-logo-trimmed.webp" style="height: 1em;"></img>
             "Symbol Classifier"
         </h1>
+        <InstallButton />
         <Classifier />
         <Footer />
     }

@@ -140,3 +140,13 @@ button:hover {
 .footer p {
     margin-bottom: 0.5rem;
 }
+
+/* Install button styles */
+.install-button:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.install-button:active {
+    transform: scale(0.98);
+}

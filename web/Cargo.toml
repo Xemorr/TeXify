@@ -15,6 +15,7 @@ leptos_axum = { version = "0.8.0", optional = true }
 leptos_meta = { version = "0.8.0" }
 tokio = { version = "1", features = ["rt-multi-thread"], optional = true }
 wasm-bindgen = { version = "0.2.106", optional = true }
+js-sys = "0.3"
 web-sys = { version = "0.3", features = ["CanvasRenderingContext2d", "HtmlCanvasElement", "ImageData", "DomRect", "Window", "Request", "Response", "RequestInit", "RequestMode", "TouchEvent", "Touch", "TouchList"] }
 burn = { version = "0.19.1", features = ["wgpu", "ndarray"], default-features = false }
 wasm-bindgen-futures = "0.4"
