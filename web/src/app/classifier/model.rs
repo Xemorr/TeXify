@@ -42,7 +42,6 @@ impl SharedModel {
 
     pub async fn inference(&mut self, image: [[f32; WIDTH]; HEIGHT]) -> Vec<Prediction> {
         use burn::prelude::*;
-        use burn::record::Recorder;
 
         // Lazy-load the model
         if self.model.is_none() {

@@ -145,7 +145,6 @@ pub fn Classifier() -> impl IntoView {
         }
     };
 
-    let perform_classification_clone = Rc::clone(&perform_classification);
     let on_mouse_move = move |e: web_sys::MouseEvent| {
         if drawing.get() {
             if let Some(canvas) = canvas_ref.get() {
@@ -157,7 +156,6 @@ pub fn Classifier() -> impl IntoView {
                     .dyn_into::<CanvasRenderingContext2d>()
                     .unwrap();
 
-                let rect = canvas.get_bounding_client_rect();
                 let (x, y) = get_logical_coords(&e, &canvas);
 
                 ctx.line_to(x, y);
