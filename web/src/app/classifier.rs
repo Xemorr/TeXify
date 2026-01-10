@@ -289,7 +289,11 @@ pub fn Classifier() -> impl IntoView {
 
 #[component]
 fn PredictionItem(prediction: Prediction) -> impl IntoView {
-    let url = format!("/symbols/{}.png", prediction.symbol);
+    // Sanitize URL same way as render_images.py does
+    let safe_symbol = prediction.symbol.replace("/", "_slash_").replace("\\", "_backslash_");
+    let url = format!("/symbols/{}.png", safe_symbol);
+    // Parse: "package-encoding-_symbol" -> extract package and symbol
+    // Example: "latex2e-OT1-_alpha" -> package="latex2e", symbol="alpha"
     let split = prediction.symbol.clone().split("_").map(|it| it.to_string()).collect::<Vec<String>>();
     let symbol = split.get(1).unwrap_or(&split[0]).clone();
     let package = split.get(0).map(|s| s.split("-").next().unwrap_or("").to_string()).unwrap_or_default();
@@ -301,13 +305,74 @@ fn PredictionItem(prediction: Prediction) -> impl IntoView {
                 <p>{format!("{:.2}%", prediction.probability)}</p>
             </div>
             {
-                // Packages that should fallback to PNG
-                let png_fallback_packages = ["stmaryrd", "dsfont", "textcomp", "mathdots", "wasysym", "marvosym", "gensymb", "tipa"];
-                // Specific symbols that should fallback to PNG
-                let png_fallback_symbols = ["textquestiondown", "textordfeminine", "dj", "copyright", "textbackslash", "textgreater", "guilsinglright", "textasciicircum"];
+                // Packages NOT supported by MathJax - always use PNG
+                let unsupported_packages = [
+                    "marvosym",   // Zodiac symbols, special symbols - not in MathJax
+                    "wasysym",    // Astronomy symbols, special symbols - not in MathJax
+                    "tipa",       // Phonetic alphabet - not in MathJax
+                    "skull",      // Skull symbol - not in MathJax
+                    "bbold",      // Blackboard bold variants - limited support
+                    "cmll",       // Linear logic symbols - not in MathJax
+                    "dsfont",     // Double-struck fonts - not in MathJax
+                    "mathdots",   // Special dots - limited support
+                    "mathrsfs",   // Script fonts - limited support
+                    "upgreek",    // Upright Greek - limited support
+                ];
 
-                let use_png = png_fallback_packages.contains(&package.as_str())
-                    || png_fallback_symbols.contains(&symbol.as_str());
+                // Packages with PARTIAL support - use PNG when in doubt
+                let partial_support_packages = [
+                    "textcomp",   // Text companion symbols - many not supported
+                    "gensymb",    // Generic symbols like degree, celsius - not supported
+                    "latexsym",   // Legacy symbols - some supported
+                    "stmaryrd",   // St Mary Road symbols - not supported
+                    "esint",      // Extended integrals - limited support
+                ];
+
+                // Text-mode symbols from latex2e that need PNG (MathJax text support is limited)
+                let text_symbols_needing_png = [
+                    // T1 encoding symbols
+                    "DH", "DJ", "NG", "TH", "dh", "dj", "ng", "th",
+                    "guillemotleft", "guillemotright", "guilsinglleft", "guilsinglright",
+                    "quotedblbase", "quotesinglbase", "textquotedbl",
+
+                    // Special text symbols with poor MathJax support
+                    "textexclamdown", "textquestiondown", "textordfeminine", "textordmasculine",
+                    "textregistered", "textcopyright", "texttrademark",
+                    "textsterling", "textcent", "textdollar",
+                    "textbackslash", "textbar", "textbraceleft", "textbraceright",
+                    "textgreater", "textless", "textasciicircum", "textasciitilde",
+                    "textunderscore", "textvisiblespace",
+
+                    // OT1 text symbols
+                    "AA", "aa", "AE", "ae", "OE", "oe", "O", "o", "L", "l", "SS", "ss",
+                    "textasteriskcentered", "textbullet", "textperiodcentered",
+                    "textdagger", "textdaggerdbl", "textparagraph", "textsection",
+                    "textellipsis", "textemdash", "textendash",
+                    "textquotedblleft", "textquotedblright", "textquoteleft", "textquoteright",
+                ];
+
+                // Math symbols from packages with known issues
+                let math_symbols_needing_png = [
+                    // amssymb symbols with rendering issues
+                    "mathfrak{", "mathcal{", "mathscr{", "mathds{", "mathbb{",
+
+                    // Special brackets
+                    "llbracket", "rrbracket", "llceil", "rrceil", "llfloor", "rrfloor",
+                    "llparenthesis", "rrparenthesis",
+                ];
+
+                // Check if we should use PNG
+                let use_png = unsupported_packages.contains(&package.as_str())
+                    || partial_support_packages.contains(&package.as_str())
+                    || (
+                        // Only check text/math symbols for non-standard packages
+                        // latex2e and amsmath/amssymb have great MathJax support
+                        !["latex2e", "amsmath", "amssymb"].contains(&package.as_str()) &&
+                        (text_symbols_needing_png.iter().any(|s| symbol.contains(s))
+                        || math_symbols_needing_png.iter().any(|s| symbol.contains(s)))
+                    )
+                    // If symbol starts with "text", assume PNG to be safe (except basic ones)
+                    || (symbol.starts_with("text") && !["textit", "textbf", "textrm", "text"].contains(&symbol.as_str()));
 
                 if use_png {
                     view! {
