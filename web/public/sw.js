@@ -1,4 +1,6 @@
-const CACHE_NAME = 'typeit-v1';
+// IMPORTANT: Increment this version number when you push updates
+const CACHE_VERSION = 'v2';
+const CACHE_NAME = `typeit-${CACHE_VERSION}`;
 const urlsToCache = [
   '/',
   '/classifier.css',
@@ -7,6 +9,7 @@ const urlsToCache = [
 ];
 
 self.addEventListener('install', event => {
+  // Force the waiting service worker to become the active service worker
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME)
@@ -52,11 +55,26 @@ self.addEventListener('activate', event => {
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames.map(cacheName => {
+          // Delete old caches
           if (cacheName !== CACHE_NAME) {
+            console.log('Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
-    }).then(() => self.clients.claim())
+    }).then(() => {
+      // Take control of all clients immediately
+      return self.clients.claim();
+    }).then(() => {
+      // Notify all clients that an update is available
+      return self.clients.matchAll().then(clients => {
+        clients.forEach(client => {
+          client.postMessage({
+            type: 'SW_UPDATED',
+            version: CACHE_VERSION
+          });
+        });
+      });
+    })
   );
 });
