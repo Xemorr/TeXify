@@ -1,18 +1,38 @@
 {
   "name": "LaTeX Symbol Classifier",
   "short_name": "TypeIt",
-  "description": "Draw and classify LaTeX symbols",
+  "description": "Draw and classify LaTeX symbols with machine learning. Works offline!",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#000000",
   "orientation": "any",
+  "prefer_related_applications": false,
   "icons": [
     {
-      "src": "/latex-logo-trimmed-filled-in.webp",
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
       "sizes": "512x512",
-      "type": "image/webp",
-      "purpose": "any maskable"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
