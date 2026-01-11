@@ -6,7 +6,10 @@ const urlsToCache = [
   '/classifier.css',
   '/latex-logo-trimmed.webp',
   '/latex-logo-trimmed-filled-in.webp',
-  '/computer-modern.otf'
+  '/computer-modern.otf',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/manifest.json'
 ];
 
 self.addEventListener('install', event => {
