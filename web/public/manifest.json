@@ -1,6 +1,6 @@
 {
   "name": "LaTeX Symbol Classifier",
-  "short_name": "TypeIt",
+  "short_name": "TeXify",
   "description": "Draw and classify LaTeX symbols with machine learning. Works offline!",
   "start_url": "/",
   "scope": "/",
