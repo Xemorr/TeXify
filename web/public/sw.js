@@ -1,10 +1,11 @@
 // IMPORTANT: Increment this version number when you push updates
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const CACHE_NAME = `typeit-${CACHE_VERSION}`;
 const urlsToCache = [
   '/',
   '/classifier.css',
   '/latex-logo-trimmed.webp',
+  '/latex-logo-trimmed-filled-in.webp',
   '/computer-modern.otf'
 ];
 

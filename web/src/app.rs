@@ -23,8 +23,8 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
                 <meta name="viewport" content="width=device-width, initial-scale=1"/>
                 <meta name="description" content="Draw LaTeX symbols and get instant recognition with our machine learning classifier. Works offline!"/>
                 <link rel="manifest" href="/manifest.json"/>
-                <link rel="icon" href="/latex-logo-trimmed.webp"/>
-                <link rel="apple-touch-icon" href="/latex-logo-trimmed.webp"/>
+                <link rel="icon" href="/latex-logo-trimmed-filled-in.webp"/>
+                <link rel="apple-touch-icon" href="/latex-logo-trimmed-filled-in.webp"/>
                 <meta name="theme-color" content="#000000"/>
                 <meta name="apple-mobile-web-app-capable" content="yes"/>
                 <meta name="apple-mobile-web-app-status-bar-style" content="black"/>
