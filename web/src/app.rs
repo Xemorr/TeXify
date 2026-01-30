@@ -29,6 +29,7 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
                 <meta name="apple-mobile-web-app-capable" content="yes"/>
                 <meta name="apple-mobile-web-app-status-bar-style" content="black"/>
                 <meta name="apple-mobile-web-app-title" content="TypeIt"/>
+                <style>"@font-face { font-family: 'Computer Modern'; src: url('computer-modern.otf'); }"</style>
                 <AutoReload options=options.clone() />
                 <HydrationScripts options/>
                 <MetaTags/>
