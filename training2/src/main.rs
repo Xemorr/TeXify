@@ -15,45 +15,47 @@ use std::ops::Add;
 use shared::image_processing::{rasterize_strokes, save_image};
 use shared::item::{DetexifyItem, HEIGHT, WIDTH};
 use shared::model::ModelConfig;
+use tokenizers::decoders::DecoderWrapper;
+use tokenizers::models::bpe::{BpeTrainerBuilder, BPE};
+use tokenizers::normalizers::{strip::Strip, unicode::NFC, utils::Sequence, NormalizerWrapper};
+use tokenizers::pre_tokenizers::byte_level::ByteLevel;
+use tokenizers::pre_tokenizers::PreTokenizerWrapper;
+use tokenizers::processors::PostProcessorWrapper;
+use tokenizers::{AddedToken, Model, Result, TokenizerBuilder};
 use crate::dataset::DetexifyDataset;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    dotenvy::dotenv().expect("Failed to load .env file");
+    let mut trainer = BpeTrainerBuilder::new()
+        .show_progress(true)
+        .vocab_size(1024)
+        .min_frequency(0)
+        .build();
 
-    let pool = PgPoolOptions::new()
-        .max_connections(1)
-        .connect("postgres://sam-hollis:yourpassword@localhost:5432/detexify")
-        .await?;
+    let mut tokenizer = TokenizerBuilder::new()
+        .with_model(BPE::default())
+        .with_normalizer(Some(Sequence::new(vec![
+            Strip::new(true, true).into(),
+            NFC.into(),
+        ])))
+        .with_pre_tokenizer(Some(ByteLevel::default()))
+        .with_post_processor(Some(ByteLevel::default()))
+        .with_decoder(Some(ByteLevel::default()))
+        .build()?;
 
-    let rows = sqlx::query!("SELECT id, key, strokes FROM samples")
-        .fetch_all(&pool)
-        .await?;
-
-    let number_of_classes = sqlx::query!("SELECT COUNT(DISTINCT key) FROM samples")
-        .fetch_all(&pool)
-        .await?
-        .get(0)
-        .unwrap()
-        .count
-        .unwrap();
-
-    let mut distinct_keys: Vec<String> = rows.iter()
-        .filter_map(|row| row.key.clone())
-        .collect::<HashSet<_>>()
-        .into_iter()
-        .collect();
-    distinct_keys.sort();
-
-    println!("{:?}", distinct_keys);
+    let pretty = false;
+    tokenizer
+        .train_from_files(
+            &mut trainer,
+            vec!["path/to/vocab.txt".to_string()],
+        )?
+        .save("tokenizer.json", pretty)?;
 
     let key_to_value: HashMap<&String, usize> = distinct_keys
         .iter()
         .enumerate()
         .map(|(i, key)| (key, i))
         .collect();
-
-
 
     let items: Vec<DetexifyItem> = rows.iter()
         .map(|row| {
