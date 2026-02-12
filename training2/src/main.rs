@@ -15,33 +15,67 @@ use std::ops::Add;
 use shared::image_processing::{rasterize_strokes, save_image};
 use shared::item::{DetexifyItem, HEIGHT, WIDTH};
 use shared::model::ModelConfig;
-use tokenizers::decoders::DecoderWrapper;
-use tokenizers::models::bpe::{BpeTrainerBuilder, BPE};
-use tokenizers::normalizers::{strip::Strip, unicode::NFC, utils::Sequence, NormalizerWrapper};
-use tokenizers::pre_tokenizers::byte_level::ByteLevel;
-use tokenizers::pre_tokenizers::PreTokenizerWrapper;
-use tokenizers::processors::PostProcessorWrapper;
-use tokenizers::{AddedToken, Model, Result, TokenizerBuilder};
 use crate::dataset::DetexifyDataset;
+
+use std::sync::Arc;
+
+use wordchipper::{
+    concurrency::rayon::{ParallelRayonDecoder, ParallelRayonEncoder},
+    decoders::TokenDictDecoder,
+    encoders::DefaultTokenEncoder,
+    pretrained::openai::patterns::OA_GPT3_CL100K_WORD_PATTERN,
+    training::{BinaryPairVocabTrainer, BinaryPairVocabTrainerOptions},
+    vocab::{ByteMapVocab, UnifiedTokenVocab, io::save_tiktoken_vocab_path},
+};
+
+fn example<I, S>(
+    vocab_size: usize,
+    batches: I,
+    tiktoken_save_path: Option<String>,
+) where
+    I: IntoIterator,
+    I::Item: AsRef<[S]>,
+    S: AsRef<str>,
+{
+    // We can pick any unsigned integer type > vocab_size;
+    // See [`wordchipper::types::TokenType`].
+    type T = u32;
+    type K = String;
+    type C = u64;
+
+    let options = BinaryPairVocabTrainerOptions::new(OA_GPT3_CL100K_WORD_PATTERN, vocab_size);
+
+    let mut trainer: BinaryPairVocabTrainer<K, C> = options.init();
+
+    for batch in batches {
+        // The trainer has no parallelism.
+        // The perceived benefits of parallelism in the trainer
+        // are insignificant if the IO for the sample source is
+        // fed by another thread.
+        trainer.update_from_samples(batch.as_ref());
+    }
+
+    let byte_vocab: ByteMapVocab<T> = Default::default();
+
+    let vocab: UnifiedTokenVocab<T> =
+        trainer.train(byte_vocab.clone()).expect("training failed");
+
+    if let Some(path) = tiktoken_save_path {
+        save_tiktoken_vocab_path(&vocab.span_vocab().span_map(), &path)
+            .expect("failed to save tiktoken vocab");
+        println!("- tiktoken vocab: {path:?}");
+    }
+
+    let encoder: DefaultTokenEncoder<T> = DefaultTokenEncoder::new(vocab.clone(), None);
+    let encoder = ParallelRayonEncoder::new(Arc::new(encoder));
+
+    let decoder = TokenDictDecoder::from_unified_vocab(vocab.clone());
+    let decoder = ParallelRayonDecoder::new(Arc::new(decoder));
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    let mut trainer = BpeTrainerBuilder::new()
-        .show_progress(true)
-        .vocab_size(1024)
-        .min_frequency(0)
-        .build();
 
-    let mut tokenizer = TokenizerBuilder::new()
-        .with_model(BPE::default())
-        .with_normalizer(Some(Sequence::new(vec![
-            Strip::new(true, true).into(),
-            NFC.into(),
-        ])))
-        .with_pre_tokenizer(Some(ByteLevel::default()))
-        .with_post_processor(Some(ByteLevel::default()))
-        .with_decoder(Some(ByteLevel::default()))
-        .build()?;
 
     let pretty = false;
     tokenizer
