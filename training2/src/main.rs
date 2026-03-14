@@ -19,33 +19,39 @@ use crate::dataset::DetexifyDataset;
 
 use std::sync::Arc;
 
+use std::sync::Arc;
+
 use wordchipper::{
-    concurrency::rayon::{ParallelRayonDecoder, ParallelRayonEncoder},
-    decoders::TokenDictDecoder,
-    encoders::DefaultTokenEncoder,
-    pretrained::openai::patterns::OA_GPT3_CL100K_WORD_PATTERN,
-    training::{BinaryPairVocabTrainer, BinaryPairVocabTrainerOptions},
-    vocab::{ByteMapVocab, UnifiedTokenVocab, io::save_tiktoken_vocab_path},
+    Tokenizer,
+    TokenizerOptions,
+    UnifiedTokenVocab,
+    pretrained::openai::OA_CL100K_BASE_PATTERN,
+    vocab::{
+        ByteMapVocab,
+        io::save_base64_span_map_path,
+    },
+};
+use wordchipper_training::{
+    BPETRainerOptions,
+    BPETrainer,
 };
 
 fn example<I, S>(
     vocab_size: usize,
     batches: I,
-    tiktoken_save_path: Option<String>,
-) where
+    vocab_save_path: Option<String>,
+) -> Arc<Tokenizer<u32>>
+where
     I: IntoIterator,
     I::Item: AsRef<[S]>,
     S: AsRef<str>,
 {
     // We can pick any unsigned integer type > vocab_size;
-    // See [`wordchipper::types::TokenType`].
+    // See [`wordchipper::TokenType`].
     type T = u32;
-    type K = String;
-    type C = u64;
 
-    let options = BinaryPairVocabTrainerOptions::new(OA_GPT3_CL100K_WORD_PATTERN, vocab_size);
-
-    let mut trainer: BinaryPairVocabTrainer<K, C> = options.init();
+    let mut trainer =
+        BPETRainerOptions::new(OA_CL100K_BASE_PATTERN, vocab_size).init();
 
     for batch in batches {
         // The trainer has no parallelism.
@@ -57,26 +63,25 @@ fn example<I, S>(
 
     let byte_vocab: ByteMapVocab<T> = Default::default();
 
-    let vocab: UnifiedTokenVocab<T> =
-        trainer.train(byte_vocab.clone()).expect("training failed");
+    let vocab: Arc<UnifiedTokenVocab<T>> = trainer
+        .train(byte_vocab.clone())
+        .expect("training failed")
+        .into();
 
-    if let Some(path) = tiktoken_save_path {
-        save_tiktoken_vocab_path(&vocab.span_vocab().span_map(), &path)
-            .expect("failed to save tiktoken vocab");
+    if let Some(path) = vocab_save_path {
+        save_base64_span_map_path(&vocab.span_vocab().span_map(), &path)
+            .expect("failed to save vocab");
         println!("- tiktoken vocab: {path:?}");
     }
 
-    let encoder: DefaultTokenEncoder<T> = DefaultTokenEncoder::new(vocab.clone(), None);
-    let encoder = ParallelRayonEncoder::new(Arc::new(encoder));
+    let tokenizer: Arc<Tokenizer<u32>> =
+        TokenizerOptions::default().with_parallel(true).build(vocab);
 
-    let decoder = TokenDictDecoder::from_unified_vocab(vocab.clone());
-    let decoder = ParallelRayonDecoder::new(Arc::new(decoder));
+    tokenizer
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-
-
     let pretty = false;
     tokenizer
         .train_from_files(
