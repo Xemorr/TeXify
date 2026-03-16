@@ -19,8 +19,6 @@ use crate::dataset::DetexifyDataset;
 
 use std::sync::Arc;
 
-use std::sync::Arc;
-
 use wordchipper::{
     Tokenizer,
     TokenizerOptions,
@@ -36,7 +34,7 @@ use wordchipper_training::{
     BPETrainer,
 };
 
-fn example<I, S>(
+fn train_tokenizer_from_batches<I, S>(
     vocab_size: usize,
     batches: I,
     vocab_save_path: Option<String>,
@@ -82,13 +80,7 @@ where
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    let pretty = false;
-    tokenizer
-        .train_from_files(
-            &mut trainer,
-            vec!["path/to/vocab.txt".to_string()],
-        )?
-        .save("tokenizer.json", pretty)?;
+
 
     let key_to_value: HashMap<&String, usize> = distinct_keys
         .iter()
